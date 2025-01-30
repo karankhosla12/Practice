@@ -10,6 +10,7 @@
         let lastPeakTime = 0; 
         let beatTimes = [];
         
+        let isListening = false;
         async function startListening() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -17,9 +18,11 @@
                 analyser = audioContext.createAnalyser();
                 microphone = audioContext.createMediaStreamSource(stream);
                 microphone.connect(analyser);
-                analyser.fftSize = 256;
+                analyser.fftSize = 512; // Higher resolution for better beat detection
+                analyser.smoothingTimeConstant = 0.3; // Helps smooth out noise
                 bufferLength = analyser.frequencyBinCount;
                 dataArray = new Uint8Array(bufferLength);
+                isListening = true;
                 detectBeats();
             } catch (error) {
                 console.error("Error accessing microphone:", error);
@@ -27,12 +30,16 @@
         }
         
         function detectBeats() {
-            analyser.getByteFrequencyData(dataArray);
-            let sum = dataArray.reduce((a, b) => a + b, 0);
+            if (!isListening) return;
+            analyser.getByteTimeDomainData(dataArray); // Use time-domain data for amplitude-based beat detection
+            let sum = 0;
+            for (let i = 1; i < bufferLength; i++) {
+                sum += Math.abs(dataArray[i] - 128); // Centered around 128 for time-domain data
+            }
             let avg = sum / bufferLength;
             
             let currentTime = audioContext.currentTime;
-            const threshold = 180;
+            const threshold = 20; // Adjusted for time-domain amplitude detection
             const minInterval = 0.3;
             if (avg > threshold && currentTime - lastPeakTime > minInterval) {
                 beatTimes.push(currentTime);
@@ -47,7 +54,7 @@
                     beatTimes.shift();
                 }
             }
-            if (audioContext.state !== 'closed') {
+            if (isListening) {
                 requestAnimationFrame(detectBeats);
             }
         }
