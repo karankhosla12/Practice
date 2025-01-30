@@ -1,8 +1,82 @@
-<html> 
-<head> 
-<title > this is a test </title> 
-</head> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BPM Detector</title>
+    <script>
+        let audioContext, analyser, microphone;
+        let bufferLength, dataArray;
+        let lastPeakTime = 0; a 
+        let beatTimes = [];
+        
+        async function startListening() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+                analyser.fftSize = 256;
+                bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                detectBeats();
+            } catch (error) {
+                console.error("Error accessing microphone:", error);
+            }
+        }
+        
+        function detectBeats() {
+            analyser.getByteFrequencyData(dataArray);
+            let sum = dataArray.reduce((a, b) => a + b, 0);
+            let avg = sum / bufferLength;
+            
+            let currentTime = audioContext.currentTime;
+            if (avg > 180 && currentTime - lastPeakTime > 0.3) {
+                beatTimes.push(currentTime);
+                lastPeakTime = currentTime;
+                
+                if (beatTimes.length > 5) {
+                    let intervals = beatTimes.slice(1).map((t, i) => t - beatTimes[i]);
+                    let avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+                    let bpm = Math.round(60 / avgInterval);
+                    document.getElementById("bpm-display").textContent = `BPM: ${bpm}`;
+                    beatTimes.shift();
+                }
+            }
+            requestAnimationFrame(detectBeats);
+        }
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+            margin: 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            border: none;
+            background: blue;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #bpm-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: green;
+        }
+    </style>
+</head>
 <body>
-<P> test
+    <button onclick="startListening()">Start BPM Detection</button>
+    <div id="bpm-display">BPM: --</div>
 </body>
 </html>
