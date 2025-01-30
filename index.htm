@@ -47,7 +47,9 @@
                     beatTimes.shift();
                 }
             }
-            requestAnimationFrame(detectBeats);
+            if (audioContext.state !== 'closed') {
+                requestAnimationFrame(detectBeats);
+            }
         }
     </script>
     <style>
