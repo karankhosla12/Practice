@@ -7,7 +7,7 @@
     <script>
         let audioContext, analyser, microphone;
         let bufferLength, dataArray;
-        let lastPeakTime = 0; a 
+        let lastPeakTime = 0; 
         let beatTimes = [];
         
         async function startListening() {
@@ -32,11 +32,14 @@
             let avg = sum / bufferLength;
             
             let currentTime = audioContext.currentTime;
-            if (avg > 180 && currentTime - lastPeakTime > 0.3) {
+            const threshold = 180;
+            const minInterval = 0.3;
+            if (avg > threshold && currentTime - lastPeakTime > minInterval) {
                 beatTimes.push(currentTime);
                 lastPeakTime = currentTime;
                 
-                if (beatTimes.length > 5) {
+                const maxBeatHistory = 5;
+                if (beatTimes.length > maxBeatHistory) {
                     let intervals = beatTimes.slice(1).map((t, i) => t - beatTimes[i]);
                     let avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
                     let bpm = Math.round(60 / avgInterval);
